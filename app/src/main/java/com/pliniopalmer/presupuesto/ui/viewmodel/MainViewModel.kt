@@ -58,25 +58,47 @@ class MainViewModel(
             else repository.getCategoriasConSubcategoriasFlow(user.id)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        
+    val currentMes: StateFlow<java.time.YearMonth> = kotlinx.coroutines.flow.MutableStateFlow(java.time.YearMonth.now())
 
     val uiState: StateFlow<MainUiState> = combine(
         usuarios,
         activeUsuario,
         ingresos,
-        rawCategorias
-    ) { userList, currentUser, incomeList, categoryRelations ->
-        val categorySummaries = categoryRelations.map { calculateCategoriaSummary(it) }
+        rawCategorias,
+        currentMes
+    ) { userList, currentUser, incomeList, categoryRelations, mes ->
+        val currentMonthStart = mes.atDay(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        val nextMonthStart = mes.plusMonths(1).atDay(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        
+        val categorySummaries = categoryRelations.map { calculateCategoriaSummary(it, currentMonthStart, nextMonthStart, mes.toString()) }
 
-        val totalIngresos = incomeList.sumOf { it.monto }
-        val totalPresupuestado = categorySummaries.sumOf { it.presupuestoTotal }
-        val totalGastado = categorySummaries.sumOf { it.gastadoTotal }
-        val dineroRealDisponible = totalIngresos - totalPresupuestado
+        val totalIngresosAllTime = incomeList.sumOf { it.monto }
+        val totalPresupuestadoActual = categorySummaries.sumOf { it.presupuestoTotal }
+        val totalGastadoActual = categorySummaries.sumOf { it.gastadoTotal }
+        
+        // Sumar todos los gastos de otros meses (históricos o futuros) que ya salieron del dinero real
+        val gastosOtrosMeses = categoryRelations.flatMap { cat ->
+            cat.subcategoriasConGastos.flatMap { sub ->
+                sub.gastos.filter { it.fecha !in currentMonthStart until nextMonthStart }
+            }
+        }.sumOf { it.monto }
+        
+        // Para el mes en curso, deducimos del "Dinero Real" lo que asignaste como presupuesto o lo que ya gastaste (el que sea mayor)
+        val deduccionEsteMes = categorySummaries.sumOf { catSum ->
+             catSum.subcategorias.sumOf { subSum ->
+                 val presu = subSum.restante + subSum.gastadoTotal
+                 maxOf(presu, subSum.gastadoTotal)
+             }
+        }
+        
+        val dineroRealDisponible = totalIngresosAllTime - gastosOtrosMeses - deduccionEsteMes
 
         val overview = FinancialOverview(
             dineroRealDisponible = dineroRealDisponible,
-            totalIngresos = totalIngresos,
-            totalPresupuestado = totalPresupuestado,
-            totalGastado = totalGastado
+            totalIngresos = totalIngresosAllTime,
+            totalPresupuestado = totalPresupuestadoActual,
+            totalGastado = totalGastadoActual
         )
 
         MainUiState(
@@ -87,6 +109,57 @@ class MainViewModel(
             categorias = categorySummaries
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MainUiState(isLoading = true))
+    
+    val annualReportState: StateFlow<com.pliniopalmer.presupuesto.ui.model.AnnualReportState> = combine(
+        ingresos,
+        rawCategorias
+    ) { incomeList, categoryRelations ->
+        val mesesConMovimientos = mutableSetOf<String>()
+        val gastosPorMes = mutableMapOf<String, Double>()
+        val ingresosPorMes = mutableMapOf<String, Double>()
+        
+        incomeList.forEach { ingreso ->
+            val mes = java.time.Instant.ofEpochMilli(ingreso.fecha)
+                .atZone(java.time.ZoneId.systemDefault())
+                .let { java.time.YearMonth.from(it).toString() }
+            mesesConMovimientos.add(mes)
+            ingresosPorMes[mes] = (ingresosPorMes[mes] ?: 0.0) + ingreso.monto
+        }
+        
+        categoryRelations.forEach { cat ->
+            cat.subcategoriasConGastos.forEach { sub ->
+                sub.gastos.forEach { gasto ->
+                    val mes = java.time.Instant.ofEpochMilli(gasto.fecha)
+                        .atZone(java.time.ZoneId.systemDefault())
+                        .let { java.time.YearMonth.from(it).toString() }
+                    mesesConMovimientos.add(mes)
+                    gastosPorMes[mes] = (gastosPorMes[mes] ?: 0.0) + gasto.monto
+                }
+            }
+        }
+        
+        val reportes = mesesConMovimientos.sortedDescending().map { mes ->
+            val ingresos = ingresosPorMes[mes] ?: 0.0
+            val gastos = gastosPorMes[mes] ?: 0.0
+            com.pliniopalmer.presupuesto.ui.model.MonthlyReport(
+                mes = mes,
+                totalIngresos = ingresos,
+                totalGastado = gastos,
+                balance = ingresos - gastos
+            )
+        }
+        
+        val totalIngresos = reportes.sumOf { it.totalIngresos }
+        val totalGastado = reportes.sumOf { it.totalGastado }
+        
+        com.pliniopalmer.presupuesto.ui.model.AnnualReportState(
+            isLoading = false,
+            reportesMensuales = reportes,
+            totalIngresosAnual = totalIngresos,
+            totalGastadoAnual = totalGastado,
+            balanceAnual = totalIngresos - totalGastado
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.pliniopalmer.presupuesto.ui.model.AnnualReportState(isLoading = true))
 
     fun createUsuario(nombre: String) {
         viewModelScope.launch {
@@ -163,6 +236,12 @@ class MainViewModel(
         }
     }
 
+    fun updateSubcategoriaPresupuesto(subcategoriaId: Long, mes: String, monto: Double) {
+        viewModelScope.launch {
+            repository.updateSubcategoriaPresupuesto(subcategoriaId, mes, monto)
+        }
+    }
+
     fun deleteSubcategoria(subcategoriaId: Long) {
         viewModelScope.launch {
             repository.deleteSubcategoria(subcategoriaId)
@@ -193,14 +272,26 @@ class MainViewModel(
     }
 
     companion object {
-        fun calculateSubcategoriaSummary(subWithGastos: SubcategoriaConGastos): SubcategoriaSummary {
+        fun calculateSubcategoriaSummary(
+            subWithGastos: SubcategoriaConGastos,
+            currentMonthStart: Long,
+            nextMonthStart: Long,
+            mesActual: String
+        ): SubcategoriaSummary {
             val sub = subWithGastos.subcategoria
-            val gastos = subWithGastos.gastos
+            // Filtrar gastos por fecha (mes actual)
+            val gastos = subWithGastos.gastos.filter { it.fecha in currentMonthStart until nextMonthStart }
+            
+            // Buscar el presupuesto para el mes actual. Si no existe, buscamos el más reciente de los meses anteriores.
+            val presupuesto = subWithGastos.presupuestos.find { it.mes == mesActual }?.monto 
+                ?: subWithGastos.presupuestos.filter { it.mes < mesActual }.maxByOrNull { it.mes }?.monto 
+                ?: 0.0
+            
             val gastadoTotal = gastos.sumOf { it.monto }
-            val restante = sub.presupuesto - gastadoTotal
+            val restante = presupuesto - gastadoTotal
 
-            val porcentajeRestante = if (sub.presupuesto > 0) {
-                (restante / sub.presupuesto).toFloat().coerceIn(0f, 1f)
+            val porcentajeRestante = if (presupuesto > 0) {
+                (restante / presupuesto).toFloat().coerceIn(0f, 1f)
             } else if (restante <= 0 && gastadoTotal > 0) {
                 0f
             } else {
@@ -223,9 +314,19 @@ class MainViewModel(
             )
         }
 
-        fun calculateCategoriaSummary(rel: CategoriaConSubcategorias): CategoriaSummary {
-            val subSummaries = rel.subcategoriasConGastos.map { calculateSubcategoriaSummary(it) }
-            val presupuestoTotal = subSummaries.sumOf { it.subcategoria.presupuesto }
+        fun calculateCategoriaSummary(
+            rel: CategoriaConSubcategorias,
+            currentMonthStart: Long,
+            nextMonthStart: Long,
+            mesActual: String
+        ): CategoriaSummary {
+            val subSummaries = rel.subcategoriasConGastos.map { 
+                calculateSubcategoriaSummary(it, currentMonthStart, nextMonthStart, mesActual) 
+            }
+            // En vez de sacar presupuesto de la entidad base, lo sumamos del summary de cada subcategoria
+            val presupuestoTotal = subSummaries.sumOf { summary -> 
+                summary.restante + summary.gastadoTotal
+            }
             val gastadoTotal = subSummaries.sumOf { it.gastadoTotal }
             val restante = presupuestoTotal - gastadoTotal
 

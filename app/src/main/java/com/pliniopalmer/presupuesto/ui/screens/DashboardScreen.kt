@@ -50,6 +50,7 @@ import com.pliniopalmer.presupuesto.ui.viewmodel.MainViewModel
 fun DashboardScreen(
     viewModel: MainViewModel,
     onCategoryClick: (Long) -> Unit,
+    onReportsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -70,7 +71,8 @@ fun DashboardScreen(
                 activeUsuario = uiState.activeUsuario,
                 onSelectUsuario = { viewModel.selectUsuario(it) },
                 onCreateUsuarioClick = { showCreateUserDialog = true },
-                onManageIncomeClick = { showAddIncomeSheet = true }
+                onManageIncomeClick = { showAddIncomeSheet = true },
+                onReportsClick = onReportsClick
             )
         },
         floatingActionButton = {

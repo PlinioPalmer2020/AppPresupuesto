@@ -34,17 +34,18 @@ import com.pliniopalmer.presupuesto.data.local.entity.SubcategoriaEntity
 fun AddSubcategoryBottomSheet(
     dineroRealDisponible: Double,
     subcategoriaToEdit: SubcategoriaEntity? = null,
+    presupuestoActual: Double = 0.0,
     onDismissRequest: () -> Unit,
     onConfirm: (nombre: String, presupuesto: Double) -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var name by remember { mutableStateOf(subcategoriaToEdit?.nombre ?: "") }
-    var budgetText by remember { mutableStateOf(subcategoriaToEdit?.presupuesto?.toString() ?: "") }
+    var budgetText by remember { mutableStateOf(if (subcategoriaToEdit != null) presupuestoActual.toString() else "") }
     var nameError by remember { mutableStateOf<String?>(null) }
     var budgetError by remember { mutableStateOf<String?>(null) }
 
     val isEditing = subcategoriaToEdit != null
-    val originalPresupuesto = subcategoriaToEdit?.presupuesto ?: 0.0
+    val originalPresupuesto = if (isEditing) presupuestoActual else 0.0
     // Real cash available considering any budget already assigned to this subcategory if editing
     val effectiveAvailableCash = dineroRealDisponible + originalPresupuesto
 

@@ -95,6 +95,9 @@ fun PresupuestoApp(viewModel: MainViewModel) {
                     viewModel = viewModel,
                     onCategoryClick = { categoriaId ->
                         navController.navigate("category_detail/$categoriaId")
+                    },
+                    onReportsClick = {
+                        navController.navigate("reports")
                     }
                 )
             }
@@ -108,6 +111,15 @@ fun PresupuestoApp(viewModel: MainViewModel) {
                 val categoriaId = backStackEntry.arguments?.getLong("categoriaId") ?: 0L
                 CategoryDetailScreen(
                     categoriaId = categoriaId,
+                    viewModel = viewModel,
+                    onBackClick = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            
+            composable("reports") {
+                com.pliniopalmer.presupuesto.ui.screens.ReportScreen(
                     viewModel = viewModel,
                     onBackClick = {
                         navController.popBackStack()

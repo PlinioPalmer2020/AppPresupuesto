@@ -54,8 +54,9 @@ fun SubcategoryCard(
     val statusColor = getStatusColor(summary.status)
     val statusLabel = getStatusLabel(summary.status, summary.restante)
 
-    val progress = if (summary.subcategoria.presupuesto > 0) {
-        (summary.gastadoTotal / summary.subcategoria.presupuesto).toFloat().coerceIn(0f, 1f)
+    val presu = summary.restante + summary.gastadoTotal
+    val progress = if (presu > 0) {
+        (summary.gastadoTotal / presu).toFloat().coerceIn(0f, 1f)
     } else if (summary.gastadoTotal > 0) {
         1f
     } else {
@@ -104,8 +105,9 @@ fun SubcategoryCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
+                    val presu = summary.restante + summary.gastadoTotal
                     Text(
-                        text = "Presupuesto: ${formatCurrency(summary.subcategoria.presupuesto)}",
+                        text = "Presupuesto: ${formatCurrency(presu)}",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     Text(

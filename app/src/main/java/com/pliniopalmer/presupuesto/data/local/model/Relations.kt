@@ -12,7 +12,12 @@ data class SubcategoriaConGastos(
         parentColumn = "id",
         entityColumn = "subcategoria_id"
     )
-    val gastos: List<GastoEntity>
+    val gastos: List<GastoEntity>,
+    @Relation(
+        parentColumn = "id",
+        entityColumn = "subcategoria_id"
+    )
+    val presupuestos: List<com.pliniopalmer.presupuesto.data.local.entity.PresupuestoMensualEntity>
 )
 
 data class CategoriaConSubcategorias(

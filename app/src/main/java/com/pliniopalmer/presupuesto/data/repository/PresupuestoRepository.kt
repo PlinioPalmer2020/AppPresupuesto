@@ -94,14 +94,38 @@ class PresupuestoRepository(
     suspend fun addSubcategoria(categoriaId: Long, nombre: String, presupuesto: Double): Long {
         val subcategoria = SubcategoriaEntity(
             categoriaId = categoriaId,
-            nombre = nombre,
-            presupuesto = presupuesto
+            nombre = nombre
         )
-        return categoriaDao.insertSubcategoria(subcategoria)
+        val subId = categoriaDao.insertSubcategoria(subcategoria)
+        
+        // Asignar presupuesto para el mes actual inmediatamente
+        val mes = java.time.YearMonth.now().toString()
+        val presupuestoEntity = com.pliniopalmer.presupuesto.data.local.entity.PresupuestoMensualEntity(
+            subcategoriaId = subId,
+            mes = mes,
+            monto = presupuesto
+        )
+        categoriaDao.insertPresupuestoMensual(presupuestoEntity)
+        
+        return subId
     }
 
     suspend fun updateSubcategoria(subcategoria: SubcategoriaEntity) {
         categoriaDao.updateSubcategoria(subcategoria)
+    }
+    
+    suspend fun updateSubcategoriaPresupuesto(subcategoriaId: Long, mes: String, monto: Double) {
+        val existente = categoriaDao.getPresupuestoMensual(subcategoriaId, mes)
+        if (existente != null) {
+            categoriaDao.updatePresupuestoMensual(existente.copy(monto = monto))
+        } else {
+            val nuevo = com.pliniopalmer.presupuesto.data.local.entity.PresupuestoMensualEntity(
+                subcategoriaId = subcategoriaId,
+                mes = mes,
+                monto = monto
+            )
+            categoriaDao.insertPresupuestoMensual(nuevo)
+        }
     }
 
     suspend fun deleteSubcategoria(subcategoriaId: Long) {

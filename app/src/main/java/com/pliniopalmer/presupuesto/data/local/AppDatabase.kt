@@ -11,6 +11,7 @@ import com.pliniopalmer.presupuesto.data.local.dao.UsuarioDao
 import com.pliniopalmer.presupuesto.data.local.entity.CategoriaPrincipalEntity
 import com.pliniopalmer.presupuesto.data.local.entity.GastoEntity
 import com.pliniopalmer.presupuesto.data.local.entity.IngresoEntity
+import com.pliniopalmer.presupuesto.data.local.entity.PresupuestoMensualEntity
 import com.pliniopalmer.presupuesto.data.local.entity.SubcategoriaEntity
 import com.pliniopalmer.presupuesto.data.local.entity.UsuarioEntity
 
@@ -20,9 +21,10 @@ import com.pliniopalmer.presupuesto.data.local.entity.UsuarioEntity
         IngresoEntity::class,
         CategoriaPrincipalEntity::class,
         SubcategoriaEntity::class,
-        GastoEntity::class
+        GastoEntity::class,
+        PresupuestoMensualEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

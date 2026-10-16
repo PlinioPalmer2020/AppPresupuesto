@@ -66,7 +66,7 @@ fun CategoryDetailScreen(
     val categorySummary = uiState.categorias.find { it.categoria.id == categoriaId }
 
     var showAddSubcategorySheet by remember { mutableStateOf(false) }
-    var subcategoryToEdit by remember { mutableStateOf<SubcategoriaEntity?>(null) }
+    var subcategoryToEdit by remember { mutableStateOf<SubcategoriaSummary?>(null) }
     var subcategoryForExpense by remember { mutableStateOf<SubcategoriaSummary?>(null) }
     var subcategoryToDelete by remember { mutableStateOf<SubcategoriaSummary?>(null) }
     var expenseToDelete by remember { mutableStateOf<GastoEntity?>(null) }
@@ -249,7 +249,7 @@ fun CategoryDetailScreen(
                                 subcategoryForExpense = subSummary
                             },
                             onEditBudgetClick = {
-                                subcategoryToEdit = subSummary.subcategoria
+                                subcategoryToEdit = subSummary
                                 showAddSubcategorySheet = true
                             },
                             onDeleteClick = {
@@ -269,7 +269,8 @@ fun CategoryDetailScreen(
     if (showAddSubcategorySheet) {
         AddSubcategoryBottomSheet(
             dineroRealDisponible = uiState.overview.dineroRealDisponible,
-            subcategoriaToEdit = subcategoryToEdit,
+            subcategoriaToEdit = subcategoryToEdit?.subcategoria,
+            presupuestoActual = subcategoryToEdit?.let { it.restante + it.gastadoTotal } ?: 0.0,
             onDismissRequest = {
                 showAddSubcategorySheet = false
                 subcategoryToEdit = null
@@ -277,7 +278,8 @@ fun CategoryDetailScreen(
             onConfirm = { nombre, presupuesto ->
                 val editing = subcategoryToEdit
                 if (editing != null) {
-                    viewModel.updateSubcategoria(editing.copy(nombre = nombre, presupuesto = presupuesto))
+                    viewModel.updateSubcategoria(editing.subcategoria.copy(nombre = nombre))
+                    viewModel.updateSubcategoriaPresupuesto(editing.subcategoria.id, viewModel.currentMes.value.toString(), presupuesto)
                 } else {
                     viewModel.addSubcategoria(categoriaId, nombre, presupuesto)
                 }
@@ -303,7 +305,8 @@ fun CategoryDetailScreen(
             onDismissRequest = { subcategoryToDelete = null },
             title = { Text("Eliminar Subcategoría") },
             text = {
-                Text("¿Deseas eliminar la subcategoría '${subSummary.subcategoria.nombre}'? Su presupuesto asignado de ${formatCurrency(subSummary.subcategoria.presupuesto)} volverá automáticamente a tu Dinero Real Disponible.")
+                val presu = subSummary.restante + subSummary.gastadoTotal
+                Text("¿Deseas eliminar la subcategoría '${subSummary.subcategoria.nombre}'? Su presupuesto asignado de ${formatCurrency(presu)} volverá automáticamente a tu Dinero Real Disponible.")
             },
             confirmButton = {
                 TextButton(

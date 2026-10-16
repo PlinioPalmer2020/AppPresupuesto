@@ -23,6 +23,5 @@ data class SubcategoriaEntity(
     val id: Long = 0,
     @ColumnInfo(name = "categoria_id")
     val categoriaId: Long,
-    val nombre: String,
-    val presupuesto: Double
+    val nombre: String
 )

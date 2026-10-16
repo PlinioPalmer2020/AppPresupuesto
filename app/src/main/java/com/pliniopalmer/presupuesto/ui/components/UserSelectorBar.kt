@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -40,6 +41,7 @@ fun UserSelectorBar(
     onSelectUsuario: (Long) -> Unit,
     onCreateUsuarioClick: () -> Unit,
     onManageIncomeClick: () -> Unit,
+    onReportsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -119,19 +121,31 @@ fun UserSelectorBar(
                 }
             }
 
-            TextButton(
-                onClick = onManageIncomeClick
-            ) {
-                Icon(
-                    imageVector = Icons.Default.AttachMoney,
-                    contentDescription = "Ingresos",
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "Ingresos",
-                    fontWeight = FontWeight.Bold
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = onReportsClick
+                ) {
+                    Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Default.Assessment,
+                        contentDescription = "Reportes",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                
+                TextButton(
+                    onClick = onManageIncomeClick
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AttachMoney,
+                        contentDescription = "Ingresos",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Ingresos",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     }

@@ -45,4 +45,16 @@ interface CategoriaDao {
     @Transaction
     @Query("SELECT * FROM categorias_principales WHERE id = :categoriaId LIMIT 1")
     fun getCategoriaConSubcategoriasFlow(categoriaId: Long): Flow<CategoriaConSubcategorias?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPresupuestoMensual(presupuesto: com.pliniopalmer.presupuesto.data.local.entity.PresupuestoMensualEntity): Long
+
+    @Update
+    suspend fun updatePresupuestoMensual(presupuesto: com.pliniopalmer.presupuesto.data.local.entity.PresupuestoMensualEntity)
+
+    @Query("SELECT * FROM presupuestos_mensuales WHERE subcategoria_id = :subcategoriaId AND mes = :mes LIMIT 1")
+    suspend fun getPresupuestoMensual(subcategoriaId: Long, mes: String): com.pliniopalmer.presupuesto.data.local.entity.PresupuestoMensualEntity?
+
+    @Query("SELECT * FROM presupuestos_mensuales WHERE subcategoria_id = :subcategoriaId ORDER BY mes DESC LIMIT 1")
+    suspend fun getUltimoPresupuestoMensual(subcategoriaId: Long): com.pliniopalmer.presupuesto.data.local.entity.PresupuestoMensualEntity?
 }

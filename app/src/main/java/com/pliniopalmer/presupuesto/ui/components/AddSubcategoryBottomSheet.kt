@@ -107,15 +107,26 @@ fun AddSubcategoryBottomSheet(
 
             OutlinedTextField(
                 value = budgetText,
-                onValueChange = {
-                    budgetText = it
-                    budgetError = null
+                onValueChange = { newValue ->
+                    // Filtro que solo permite dígitos y un solo punto
+                    val filteredValue = newValue.filter { it.isDigit() || it == '.' }
+                    // Asegurar que solo haya un punto decimal
+                    val pointCount = filteredValue.count { it == '.' }
+                    if (pointCount <= 1) {
+                        // Limitar a máximo 2 decimales
+                        val parts = filteredValue.split(".")
+                        if (parts.size == 1 || (parts.size == 2 && parts[1].length <= 2)) {
+                            budgetText = filteredValue
+                            budgetError = null
+                        }
+                    }
                 },
                 label = { Text("Presupuesto Asignado ($)") },
                 placeholder = { Text("0.00") },
                 isError = budgetError != null,
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                visualTransformation = CurrencyVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
             budgetError?.let {
@@ -139,9 +150,6 @@ fun AddSubcategoryBottomSheet(
                     }
                     if (budget == null || budget < 0) {
                         budgetError = "Ingresa un presupuesto válido (>= 0)"
-                        valid = false
-                    } else if (budget > effectiveAvailableCash) {
-                        budgetError = "El presupuesto sobrepasa tu Dinero Real disponible (${formatCurrency(effectiveAvailableCash)})"
                         valid = false
                     }
 

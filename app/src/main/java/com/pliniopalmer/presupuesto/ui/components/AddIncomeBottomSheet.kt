@@ -55,15 +55,26 @@ fun AddIncomeBottomSheet(
 
             OutlinedTextField(
                 value = amountText,
-                onValueChange = {
-                    amountText = it
-                    amountError = null
+                onValueChange = { newValue ->
+                    // Filtro que solo permite dígitos y un solo punto
+                    val filteredValue = newValue.filter { it.isDigit() || it == '.' }
+                    // Asegurar que solo haya un punto decimal
+                    val pointCount = filteredValue.count { it == '.' }
+                    if (pointCount <= 1) {
+                        // Limitar a máximo 2 decimales
+                        val parts = filteredValue.split(".")
+                        if (parts.size == 1 || (parts.size == 2 && parts[1].length <= 2)) {
+                            amountText = filteredValue
+                            amountError = null
+                        }
+                    }
                 },
                 label = { Text("Monto ($)") },
                 placeholder = { Text("0.00") },
                 isError = amountError != null,
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                visualTransformation = CurrencyVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth()
             )
             amountError?.let {
